@@ -1,0 +1,149 @@
+{
+  "year": 2027,
+  "months": {
+    "1": {
+      "income": {
+        "salary": 0,
+        "vr": 0,
+        "extra": []
+      },
+      "expenses": {
+        "essential_fixed": [],
+        "nonessential_fixed": [],
+        "variable": []
+      }
+    },
+    "2": {
+      "income": {
+        "salary": 0,
+        "vr": 0,
+        "extra": []
+      },
+      "expenses": {
+        "essential_fixed": [],
+        "nonessential_fixed": [],
+        "variable": []
+      }
+    },
+    "3": {
+      "income": {
+        "salary": 0,
+        "vr": 0,
+        "extra": []
+      },
+      "expenses": {
+        "essential_fixed": [],
+        "nonessential_fixed": [],
+        "variable": []
+      }
+    },
+    "4": {
+      "income": {
+        "salary": 0,
+        "vr": 0,
+        "extra": []
+      },
+      "expenses": {
+        "essential_fixed": [],
+        "nonessential_fixed": [],
+        "variable": []
+      }
+    },
+    "5": {
+      "income": {
+        "salary": 0,
+        "vr": 0,
+        "extra": []
+      },
+      "expenses": {
+        "essential_fixed": [],
+        "nonessential_fixed": [],
+        "variable": []
+      }
+    },
+    "6": {
+      "income": {
+        "salary": 0,
+        "vr": 0,
+        "extra": []
+      },
+      "expenses": {
+        "essential_fixed": [],
+        "nonessential_fixed": [],
+        "variable": []
+      }
+    },
+    "7": {
+      "income": {
+        "salary": 0,
+        "vr": 0,
+        "extra": []
+      },
+      "expenses": {
+        "essential_fixed": [],
+        "nonessential_fixed": [],
+        "variable": []
+      }
+    },
+    "8": {
+      "income": {
+        "salary": 0,
+        "vr": 0,
+        "extra": []
+      },
+      "expenses": {
+        "essential_fixed": [],
+        "nonessential_fixed": [],
+        "variable": []
+      }
+    },
+    "9": {
+      "income": {
+        "salary": 0,
+        "vr": 0,
+        "extra": []
+      },
+      "expenses": {
+        "essential_fixed": [],
+        "nonessential_fixed": [],
+        "variable": []
+      }
+    },
+    "10": {
+      "income": {
+        "salary": 0,
+        "vr": 0,
+        "extra": []
+      },
+      "expenses": {
+        "essential_fixed": [],
+        "nonessential_fixed": [],
+        "variable": []
+      }
+    },
+    "11": {
+      "income": {
+        "salary": 0,
+        "vr": 0,
+        "extra": []
+      },
+      "expenses": {
+        "essential_fixed": [],
+        "nonessential_fixed": [],
+        "variable": []
+      }
+    },
+    "12": {
+      "income": {
+        "salary": 0,
+        "vr": 0,
+        "extra": []
+      },
+      "expenses": {
+        "essential_fixed": [],
+        "nonessential_fixed": [],
+        "variable": []
+      }
+    }
+  }
+}

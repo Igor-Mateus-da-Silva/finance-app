@@ -1,0 +1,17 @@
+{
+  "year": 2026,
+  "months": {
+    "1": {
+      "income": {
+        "salary": 0,
+        "vr": 0,
+        "extra": []
+      },
+      "expenses": {
+        "essential_fixed": [],
+        "nonessential_fixed": [],
+        "variable": []
+      }
+    }
+  }
+}
