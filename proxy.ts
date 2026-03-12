@@ -7,15 +7,15 @@ const publicRoutes = ["/login", "/api/login"];
 const protectedRoutes = [
   "/",
   "/dashboard",
-  "/income",
-  "/expenses",
-  "/planning",
-  "/reports",
+  "/renda",
+  "/gastos",
+  "/planejamento",
+  "/relatorios",
   "/settings",
   "/api/logout",
 ];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Exclude static files, images, etc.
