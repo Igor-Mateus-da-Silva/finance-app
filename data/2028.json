@@ -1,5 +1,5 @@
 {
-  "year": 2026,
+  "year": 2028,
   "months": {
     "1": {
       "income": {
@@ -29,54 +29,16 @@
     },
     "3": {
       "income": {
-        "salary": 6000,
-        "vr": 380,
-        "extra": [
-          {
-            "id": "kk5zfmd5nmmt5js0f",
-            "description": "Freela",
-            "amount": 450
-          }
-        ]
+        "salary": 0,
+        "vr": 0,
+        "extra": []
       },
       "expenses": {
-        "essential_fixed": [
-          {
-            "id": "6knp9h4remmt5i9zy",
-            "description": "Casa",
-            "amount": 505,
-            "date": "2026-03-16",
-            "category": "essential_fixed"
-          }
-        ],
-        "nonessential_fixed": [
-          {
-            "id": "hc4csrj1rmmt3o4e2",
-            "description": "Academia",
-            "amount": 70,
-            "date": "2026-03-15",
-            "category": "nonessential_fixed"
-          }
-        ],
-        "variable": [
-          {
-            "id": "sfkrlrakjmmt3oqev",
-            "description": "Lanche",
-            "amount": 40,
-            "date": "2026-03-14",
-            "category": "variable"
-          }
-        ]
+        "essential_fixed": [],
+        "nonessential_fixed": [],
+        "variable": []
       },
-      "goals": [
-        {
-          "id": "1s8m66nvpmmt5lj39",
-          "name": "Intercambio",
-          "targetAmount": 22000,
-          "currentAmount": 1450,
-          "deadline": "2026-12-31"
-        }
-      ]
+      "goals": []
     },
     "4": {
       "income": {

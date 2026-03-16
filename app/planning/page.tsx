@@ -14,13 +14,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { addGoal, updateGoalAmount, deleteGoal } from "@/app/actions/goals";
+import { generateId } from "@/lib/utils";
 import { toast } from "sonner";
 import { formatCurrency } from "@/utils/finance-calculator";
 import { Trash2, Plus, Target } from "lucide-react";
 import { Goal } from "@/types";
 
 export default function PlanningPage() {
-  const { data, selectedYear, refreshData } = useFinanceStore();
+  const { data, selectedYear, selectedMonth, refreshData } = useFinanceStore();
 
   const [name, setName] = useState("");
   const [targetAmount, setTargetAmount] = useState("");
@@ -33,23 +34,29 @@ export default function PlanningPage() {
 
   if (!data) return null;
 
-  const goals = data.goals || [];
+  // Aggregate all goals from all months of the selected year
+  const goals = Object.values(data.months).flatMap((m) => m.goals || []);
 
   const handleAddGoal = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !targetAmount || !deadline) return;
+    if (!name || !targetAmount || !deadline) {
+      toast.error("Por favor, preencha todos os campos obrigatórios.");
+      return;
+    }
 
     setIsAdding(true);
     try {
-      const parsedTarget = parseFloat(targetAmount.replace(",", "."));
+      const parsedTarget = Number(targetAmount.replace(",", "."));
       const parsedCurrent = currentAmount
-        ? parseFloat(currentAmount.replace(",", "."))
+        ? Number(currentAmount.replace(",", "."))
         : 0;
-      if (isNaN(parsedTarget) || parsedTarget <= 0)
-        throw new Error("Valor inválido");
 
-      await addGoal(selectedYear, {
-        id: crypto.randomUUID(),
+      if (isNaN(parsedTarget) || parsedTarget <= 0) {
+        throw new Error("O valor objetivo deve ser um número positivo.");
+      }
+
+      await addGoal(selectedYear, selectedMonth, {
+        id: generateId(),
         name,
         targetAmount: parsedTarget,
         currentAmount: isNaN(parsedCurrent) ? 0 : parsedCurrent,
@@ -61,8 +68,9 @@ export default function PlanningPage() {
       setTargetAmount("");
       setCurrentAmount("");
       setDeadline("");
-    } catch (e) {
-      toast.error("Erro ao adicionar meta. Verifique os dados.");
+    } catch (e: any) {
+      console.error("Erro ao adicionar meta:", e);
+      toast.error(e.message || "Erro ao adicionar meta. Verifique os dados.");
     } finally {
       setIsAdding(false);
     }
@@ -83,7 +91,7 @@ export default function PlanningPage() {
     if (!val) return;
 
     try {
-      const parsedAmount = parseFloat(val.replace(",", "."));
+      const parsedAmount = Number(val.replace(",", "."));
       if (isNaN(parsedAmount) || parsedAmount <= 0) {
         toast.error("Valor inválido");
         return;
@@ -94,6 +102,7 @@ export default function PlanningPage() {
       toast.success("Valor adicionado à meta!");
       setContributeAmounts((prev) => ({ ...prev, [id]: "" }));
     } catch (e) {
+      console.error("Erro ao contribuir para meta:", e);
       toast.error("Erro ao atualizar meta.");
     }
   };

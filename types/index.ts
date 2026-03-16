@@ -33,6 +33,7 @@ export interface Expenses {
 export interface MonthData {
   income: Income;
   expenses: Expenses;
+  goals: Goal[];
 }
 
 export interface Goal {
@@ -45,8 +46,8 @@ export interface Goal {
 
 export interface YearlyData {
   year: number;
-  goals?: Goal[];
   months: {
     [month: string]: MonthData; // "1" to "12"
   };
+  goals?: Goal[]; // Keep for backward compatibility if needed, but primary is in MonthData
 }

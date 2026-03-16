@@ -25,6 +25,7 @@ import {
   addExtraIncome,
   deleteExtraIncome,
 } from "@/app/actions/finance";
+import { generateId } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   formatCurrency,
@@ -84,11 +85,13 @@ export default function IncomePage() {
 
     setIsAddingExtra(true);
     try {
-      const amount = parseFloat(extraAmount.replace(",", "."));
-      if (isNaN(amount) || amount <= 0) throw new Error("Valor inválido");
+      const amount = Number(extraAmount.replace(",", "."));
+      if (isNaN(amount) || amount <= 0) {
+        throw new Error("O valor deve ser um número positivo.");
+      }
 
       await addExtraIncome(selectedYear, selectedMonth, {
-        id: crypto.randomUUID(),
+        id: generateId(),
         description: extraDesc,
         amount,
       });
@@ -96,8 +99,9 @@ export default function IncomePage() {
       toast.success("Renda extra adicionada!");
       setExtraDesc("");
       setExtraAmount("");
-    } catch (e) {
-      toast.error("Erro ao adicionar renda extra. Verifique o valor.");
+    } catch (e: any) {
+      console.error("Erro ao adicionar renda extra:", e);
+      toast.error(e.message || "Erro ao adicionar renda extra. Verifique o valor.");
     } finally {
       setIsAddingExtra(false);
     }

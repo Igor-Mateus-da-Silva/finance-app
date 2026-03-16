@@ -28,6 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { addExpense, deleteExpense } from "@/app/actions/finance";
+import { generateId } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   formatCurrency,
@@ -73,16 +74,20 @@ export default function ExpensesPage() {
 
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!desc || !amount || !date) return;
+    if (!desc || !amount || !date) {
+      toast.error("Por favor, preencha todos os campos.");
+      return;
+    }
 
     setIsAdding(true);
     try {
-      const parsedAmount = parseFloat(amount.replace(",", "."));
-      if (isNaN(parsedAmount) || parsedAmount <= 0)
-        throw new Error("Valor inválido");
+      const parsedAmount = Number(amount.replace(",", "."));
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        throw new Error("O valor deve ser um número positivo.");
+      }
 
       await addExpense(selectedYear, selectedMonth, {
-        id: crypto.randomUUID(),
+        id: generateId(),
         description: desc,
         amount: parsedAmount,
         date: date,
@@ -93,8 +98,9 @@ export default function ExpensesPage() {
       setDesc("");
       setAmount("");
       setDate("");
-    } catch (e) {
-      toast.error("Erro ao adicionar. Verifique os dados.");
+    } catch (e: any) {
+      console.error("Erro ao adicionar despesa:", e);
+      toast.error(e.message || "Erro ao adicionar. Verifique os dados.");
     } finally {
       setIsAdding(false);
     }

@@ -16,10 +16,10 @@ export async function updateBaseIncome(
 ) {
   const data = await getYearlyData(year);
   if (!data.months[month]) {
-    // Just in case, handled by storage but let's be safe
     data.months[month] = {
       income: { salary: 0, vr: 0, extra: [] },
       expenses: { essential_fixed: [], nonessential_fixed: [], variable: [] },
+      goals: [],
     };
   }
 
@@ -37,6 +37,7 @@ export async function addExtraIncome(
   extra: IncomeExtra,
 ) {
   const data = await getYearlyData(year);
+  data.months[month].income.extra ??= [];
   data.months[month].income.extra.push(extra);
   await saveYearlyData(year, data);
   revalidatePath("/");
@@ -73,6 +74,7 @@ export async function addExpense(
     data.months[month].expenses[categoryStr] = [];
   }
 
+  data.months[month].expenses[categoryStr] ??= [];
   data.months[month].expenses[categoryStr].push(expense);
   await saveYearlyData(year, data);
   revalidatePath("/");
