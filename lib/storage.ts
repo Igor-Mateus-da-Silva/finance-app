@@ -1,18 +1,14 @@
 import { kv } from "@vercel/kv";
 
-const isProduction = process.env.NODE_ENV === "production";
-
-if (isProduction && !process.env.KV_REST_API_URL) {
-  throw new Error("KV não configurado corretamente na Vercel");
-}
+const isServer = typeof window === "undefined";
+const isKVConfigured = !!process.env.KV_REST_API_URL && !!process.env.KV_REST_API_TOKEN;
 
 const localStore: Record<string, any> = {};
 
 export async function getYearlyData(year: number) {
   const key = `finance:${year}`;
 
-  if (!isProduction) {
-    console.warn("Usando fallback local (apenas dev)");
+  if (!isServer || !isKVConfigured) {
     if (!localStore[key]) {
       localStore[key] = {
         year,
@@ -39,7 +35,7 @@ export async function getYearlyData(year: number) {
 export async function saveYearlyData(year: number, data: any) {
   const key = `finance:${year}`;
 
-  if (!isProduction) {
+  if (!isServer || !isKVConfigured) {
     localStore[key] = data;
     return;
   }
