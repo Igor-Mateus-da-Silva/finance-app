@@ -1,5 +1,5 @@
 
-import { getYearlyData } from "@/utils/json-storage";
+import { getYearlyData } from "../lib/storage";
 
 async function verify() {
   const year = 2026;

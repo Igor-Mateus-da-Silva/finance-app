@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import bcrypt from "bcrypt";
-import fs from "fs/promises";
-import path from "path";
+import bcrypt from "bcryptjs";
+import { getUser, createDefaultUser } from "@/lib/auth-storage";
 import { createSession } from "@/auth/session";
 
 // Simple in-memory rate limiting
@@ -61,20 +60,22 @@ export async function POST(request: Request) {
       );
     }
 
-    const userDataPath = path.join(process.cwd(), "data", "user.json");
-    const userDataStr = await fs.readFile(userDataPath, "utf-8");
-    const user = JSON.parse(userDataStr);
+    await createDefaultUser();
 
-    if (user.username !== username) {
+    const user: any = await getUser();
+    console.log("User from storage:", user);
+
+    if (!user || user.username !== username) {
       return NextResponse.json(
         { error: "Credenciais inválidas" },
         { status: 401 },
       );
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    const valid = await bcrypt.compare(password, user.passwordHash);
+    console.log("Password valid:", valid);
 
-    if (!isPasswordValid) {
+    if (!valid) {
       return NextResponse.json(
         { error: "Credenciais inválidas" },
         { status: 401 },

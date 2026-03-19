@@ -1,6 +1,6 @@
 "use server";
 
-import { saveYearlyData } from "@/utils/json-storage";
+import { saveYearlyData } from "@/lib/storage";
 import { YearlyData } from "@/types";
 import { revalidatePath } from "next/cache";
 
