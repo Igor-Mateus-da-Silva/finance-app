@@ -7,7 +7,8 @@ export function cn(...inputs: ClassValue[]) {
 
 export function generateId() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
+    return crypto.randomUUID()
   }
-  return Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+  // Fallback for non-secure contexts or older browsers
+  return Math.random().toString(36).substring(2, 11) + Date.now().toString(36)
 }

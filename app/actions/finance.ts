@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getYearlyData, saveYearlyData, ensureMonthExists } from "@/lib/storage";
+import { getYearlyData, saveYearlyData } from "@/utils/json-storage";
 import { Expense, IncomeExtra, YearlyData } from "@/types";
 
 export async function fetchYear(year: number): Promise<YearlyData> {
@@ -15,7 +15,13 @@ export async function updateBaseIncome(
   vr: number,
 ) {
   const data = await getYearlyData(year);
-  ensureMonthExists(data, month);
+  if (!data.months[month]) {
+    data.months[month] = {
+      income: { salary: 0, vr: 0, extra: [] },
+      expenses: { essential_fixed: [], nonessential_fixed: [], variable: [] },
+      goals: [],
+    };
+  }
 
   data.months[month].income.salary = salary;
   data.months[month].income.vr = vr;
@@ -31,7 +37,7 @@ export async function addExtraIncome(
   extra: IncomeExtra,
 ) {
   const data = await getYearlyData(year);
-  ensureMonthExists(data, month);
+  data.months[month].income.extra ??= [];
   data.months[month].income.extra.push(extra);
   await saveYearlyData(year, data);
   revalidatePath("/");
@@ -44,9 +50,8 @@ export async function deleteExtraIncome(
   id: string,
 ) {
   const data = await getYearlyData(year);
-  ensureMonthExists(data, month);
   data.months[month].income.extra = data.months[month].income.extra.filter(
-    (e: any) => e.id !== id,
+    (e) => e.id !== id,
   );
   await saveYearlyData(year, data);
   revalidatePath("/");
@@ -59,8 +64,6 @@ export async function addExpense(
   expense: Expense,
 ) {
   const data = await getYearlyData(year);
-  ensureMonthExists(data, month);
-  
   // category is e.g 'essential_fixed'
   const categoryStr = expense.category as
     | "essential_fixed"
@@ -71,6 +74,7 @@ export async function addExpense(
     data.months[month].expenses[categoryStr] = [];
   }
 
+  data.months[month].expenses[categoryStr] ??= [];
   data.months[month].expenses[categoryStr].push(expense);
   await saveYearlyData(year, data);
   revalidatePath("/");
@@ -84,10 +88,9 @@ export async function deleteExpense(
   id: string,
 ) {
   const data = await getYearlyData(year);
-  ensureMonthExists(data, month);
   data.months[month].expenses[category] = data.months[month].expenses[
     category
-  ].filter((e: any) => e.id !== id);
+  ].filter((e) => e.id !== id);
   await saveYearlyData(year, data);
   revalidatePath("/");
   return data;
@@ -100,9 +103,8 @@ export async function updateExpense(
   updatedExpense: Expense,
 ) {
   const data = await getYearlyData(year);
-  ensureMonthExists(data, month);
   const index = data.months[month].expenses[category].findIndex(
-    (e: any) => e.id === updatedExpense.id,
+    (e) => e.id === updatedExpense.id,
   );
   if (index !== -1) {
     data.months[month].expenses[category][index] = updatedExpense;
