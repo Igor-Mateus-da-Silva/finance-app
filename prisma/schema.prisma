@@ -1,0 +1,69 @@
+// Este arquivo define como o seu banco de dados será organizado.
+// Pense nele como a planta baixa de uma construção.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Modelo de Usuário: Guarda quem são as pessoas que usam o app.
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // Aqui guardamos o "hash" da senha, nunca a senha pura.
+  name      String?
+  createdAt DateTime @default(now())
+
+  // Relações: Um usuário pode ter várias transações e várias categorias.
+  transactions Transaction[]
+  categories   Category[]
+
+  @@map("users") // Nome da tabela no banco de dados será "users"
+}
+
+// Modelo de Transação: Guarda cada entrada ou saída de dinheiro.
+model Transaction {
+  id          String          @id @default(cuid())
+  description String
+  amount      Decimal         @db.Decimal(10, 2)
+  date        DateTime
+  type        TransactionType
+  
+  // Relacionamento com Categoria
+  categoryId  String
+  category    Category        @relation(fields: [categoryId], references: [id])
+
+  // Relacionamento com Usuário (Multi-tenancy)
+  // Isso garante que cada transação pertença a um dono específico.
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@map("transactions")
+}
+
+// Modelo de Categoria: Ajuda a organizar as transações (ex: Alimentação, Lazer).
+model Category {
+  id    String @id @default(cuid())
+  name  String
+
+  // Relacionamento com Usuário
+  // Assim, cada usuário pode ter suas próprias categorias personalizadas.
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  transactions Transaction[]
+
+  @@map("categories")
+}
+
+// Definimos os tipos possíveis de transação: Receita ou Despesa.
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
