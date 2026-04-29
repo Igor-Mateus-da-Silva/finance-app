@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
-import fs from "fs/promises";
-import path from "path";
+import prisma from "@/lib/prisma";
 import { createSession } from "@/auth/session";
 
-// Simple in-memory rate limiting
-// Store structure: { [ip: string]: { count: number, resetTime: number } }
+// Sistema simples de limite de tentativas (Rate Limiting)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 const MAX_ATTEMPTS = 5;
-const LOCKOUT_TIME_MS = 10 * 60 * 1000; // 10 minutes
+const LOCKOUT_TIME_MS = 10 * 60 * 1000; // 10 minutos
 
 function checkRateLimit(ip: string): {
   allowed: boolean;
@@ -23,7 +21,6 @@ function checkRateLimit(ip: string): {
   }
 
   if (now > record.resetTime) {
-    // Reset window
     rateLimitStore.set(ip, { count: 1, resetTime: now + LOCKOUT_TIME_MS });
     return { allowed: true };
   }
@@ -37,7 +34,6 @@ function checkRateLimit(ip: string): {
 }
 
 export async function POST(request: Request) {
-  // Try to get IP (Next.js App router edge case, often from headers)
   const ip = request.headers.get("x-forwarded-for") || "unknown";
 
   const rateStatus = checkRateLimit(ip);
@@ -56,39 +52,44 @@ export async function POST(request: Request) {
 
     if (!username || !password) {
       return NextResponse.json(
-        { error: "Usuário e senha são obrigatórios" },
+        { error: "E-mail e senha são obrigatórios" },
         { status: 400 },
       );
     }
 
-    const userDataPath = path.join(process.cwd(), "data", "user.json");
-    const userDataStr = await fs.readFile(userDataPath, "utf-8");
-    const user = JSON.parse(userDataStr);
+    // 1. Buscar o usuário no banco de dados pelo e-mail
+    // (O formulário envia o campo como 'username', mas tratamos como e-mail no banco)
+    const user = await prisma.user.findUnique({
+      where: { email: username },
+    });
 
-    if (user.username !== username) {
+    // Se o usuário não existir, retornamos erro genérico por segurança
+    if (!user) {
       return NextResponse.json(
-        { error: "Credenciais inválidas" },
+        { error: "E-mail ou senha inválidos" },
         { status: 401 },
       );
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    // 2. Comparar a senha enviada com o hash guardado no banco
+    const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
       return NextResponse.json(
-        { error: "Credenciais inválidas" },
+        { error: "E-mail ou senha inválidos" },
         { status: 401 },
       );
     }
 
-    // Success - Reset rate limit for this IP
+    // Sucesso - Limpa o contador de tentativas para este IP
     rateLimitStore.delete(ip);
 
-    await createSession(username);
+    // 3. Criar a sessão usando o ID e o E-mail reais do banco
+    await createSession(user.id, user.email);
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Login error:", error);
+    console.error("Erro no processo de login:", error);
     return NextResponse.json(
       { error: "Erro interno no servidor" },
       { status: 500 },
