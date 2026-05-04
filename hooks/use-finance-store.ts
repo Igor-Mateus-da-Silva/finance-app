@@ -54,7 +54,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     const result = await getTransactions(selectedYear);
     
     if (result.success && result.data) {
-      set({ transactions: result.data as SerializedTransaction[], isLoading: false });
+      set({ transactions: result.data as unknown as SerializedTransaction[], isLoading: false });
     } else {
       set({ error: result.message || "Erro ao carregar", isLoading: false });
       toast.error(result.message || "Falha ao sincronizar com o banco.");
@@ -71,7 +71,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
   loadGoals: async () => {
     const result = await getGoalsAction();
     if (result.success && result.data) {
-      set({ goals: result.data as SerializedGoal[] });
+      set({ goals: result.data as unknown as SerializedGoal[] });
     }
   },
 
