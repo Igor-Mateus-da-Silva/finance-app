@@ -12,18 +12,18 @@ import { Button } from "./ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const MONTHS = [
-  { value: "1", label: "Janeiro" },
-  { value: "2", label: "Fevereiro" },
-  { value: "3", label: "Março" },
-  { value: "4", label: "Abril" },
-  { value: "5", label: "Maio" },
-  { value: "6", label: "Junho" },
-  { value: "7", label: "Julho" },
-  { value: "8", label: "Agosto" },
-  { value: "9", label: "Setembro" },
-  { value: "10", label: "Outubro" },
-  { value: "11", label: "Novembro" },
-  { value: "12", label: "Dezembro" },
+  { value: "0", label: "Janeiro" },
+  { value: "1", label: "Fevereiro" },
+  { value: "2", label: "Março" },
+  { value: "3", label: "Abril" },
+  { value: "4", label: "Maio" },
+  { value: "5", label: "Junho" },
+  { value: "6", label: "Julho" },
+  { value: "7", label: "Agosto" },
+  { value: "8", label: "Setembro" },
+  { value: "9", label: "Outubro" },
+  { value: "10", label: "Novembro" },
+  { value: "11", label: "Dezembro" },
 ];
 
 export function MonthSelector() {
@@ -31,37 +31,36 @@ export function MonthSelector() {
   const currentYear = new Date().getFullYear();
 
   // Allow creating years from current year onwards up to +5 years for planning
-  // Wait, the requirement says "permitir criar apenas anos do ano atual para frente"
   const availableYears = Array.from({ length: 5 }, (_, i) => currentYear + i);
-  // Also include the currently selected year if it's somehow in the past (e.g., viewing history)
+  // Also include the currently selected year if it's somehow in the past
   if (!availableYears.includes(selectedYear)) {
     availableYears.unshift(selectedYear);
   }
 
   const handlePrevMonth = () => {
-    let m = parseInt(selectedMonth);
+    let m = selectedMonth;
     let y = selectedYear;
-    if (m === 1) {
-      m = 12;
+    if (m === 0) {
+      m = 11;
       y = y - 1;
       setYear(y);
     } else {
       m = m - 1;
     }
-    setMonth(m.toString());
+    setMonth(m);
   };
 
   const handleNextMonth = () => {
-    let m = parseInt(selectedMonth);
+    let m = selectedMonth;
     let y = selectedYear;
-    if (m === 12) {
-      m = 1;
+    if (m === 11) {
+      m = 0;
       y = y + 1;
       setYear(y);
     } else {
       m = m + 1;
     }
-    setMonth(m.toString());
+    setMonth(m);
   };
 
   return (
@@ -71,9 +70,9 @@ export function MonthSelector() {
       </Button>
 
       <Select
-        value={selectedMonth}
+        value={selectedMonth.toString()}
         onValueChange={(val) => {
-          if (val) setMonth(val);
+          if (val !== null) setMonth(parseInt(val));
         }}
       >
         <SelectTrigger className="w-[140px]">
@@ -91,7 +90,7 @@ export function MonthSelector() {
       <Select
         value={selectedYear.toString()}
         onValueChange={(val) => {
-          if (val) setYear(parseInt(val));
+          if (val !== null) setYear(parseInt(val));
         }}
       >
         <SelectTrigger className="w-[100px]">
