@@ -3,18 +3,38 @@ import { Transaction } from "@prisma/client";
 import { CreateTransactionDTO, UpdateTransactionDTO, TransactionSummary } from "@/types/transaction";
 
 /**
+ * O Prisma retorna valores monetários como Decimal (objeto especial para precisão).
+ * O Next.js só aceita objetos "planos" (números, strings, etc.) para enviar ao Client Component.
+ * Esta função converte todas as transações para um formato seguro, transformando Decimal em number.
+ */
+type SerializedTransaction = Omit<Transaction, "amount"> & {
+  amount: number;
+  category?: { id: string; name: string; userId: string } | null;
+};
+
+function serializeTransaction(t: Transaction & { category?: { id: string; name: string; userId: string } | null }): SerializedTransaction {
+  return {
+    ...t,
+    // Convertemos o Decimal para número simples usando toNumber()
+    amount: typeof t.amount === "object" && t.amount !== null
+      ? (t.amount as { toNumber: () => number }).toNumber()
+      : Number(t.amount),
+  };
+}
+
+/**
  * Serviço responsável por gerenciar as operações de transações no banco de dados.
  */
 export const TransactionService = {
   /**
    * Busca todas as transações de um usuário específico em um determinado ano.
    */
-  async getTransactionsByUserId(userId: string, year: number): Promise<Transaction[]> {
+  async getTransactionsByUserId(userId: string, year: number): Promise<SerializedTransaction[]> {
     try {
       const startDate = new Date(year, 0, 1);
       const endDate = new Date(year, 11, 31, 23, 59, 59);
 
-      return await prisma.transaction.findMany({
+      const transactions = await prisma.transaction.findMany({
         where: {
           userId,
           date: { gte: startDate, lte: endDate },
@@ -22,6 +42,9 @@ export const TransactionService = {
         orderBy: { date: "desc" },
         include: { category: true },
       });
+
+      // Convertemos cada transação para um objeto plano antes de retornar
+      return transactions.map(serializeTransaction);
     } catch (error) {
       console.error("Erro ao buscar transações:", error);
       throw new Error("Erro ao carregar transações.");
@@ -31,7 +54,7 @@ export const TransactionService = {
   /**
    * Cria uma nova transação após validar a categoria.
    */
-  async createTransaction(data: CreateTransactionDTO): Promise<Transaction> {
+  async createTransaction(data: CreateTransactionDTO): Promise<SerializedTransaction> {
     try {
       // Validação de segurança: a categoria deve pertencer ao mesmo usuário.
       const category = await prisma.category.findUnique({
@@ -42,9 +65,10 @@ export const TransactionService = {
         throw new Error("Categoria inválida ou não pertence ao usuário.");
       }
 
-      return await prisma.transaction.create({
-        data,
-      });
+      const created = await prisma.transaction.create({ data });
+
+      // Serializamos o Decimal antes de retornar ao Client Component
+      return serializeTransaction(created);
     } catch (error) {
       console.error("Erro ao criar transação:", error);
       throw error instanceof Error ? error : new Error("Erro ao criar transação.");
@@ -54,7 +78,7 @@ export const TransactionService = {
   /**
    * Atualiza uma transação garantindo que o usuário seja o dono.
    */
-  async updateTransaction(id: string, userId: string, data: Partial<UpdateTransactionDTO>): Promise<Transaction> {
+  async updateTransaction(id: string, userId: string, data: Partial<UpdateTransactionDTO>): Promise<SerializedTransaction> {
     try {
       // Se estiver mudando a categoria, precisamos validar novamente.
       if (data.categoryId) {
@@ -66,8 +90,7 @@ export const TransactionService = {
         }
       }
 
-      // Usamos updateMany para garantir o filtro por userId, ou fazemos um findFirst seguido de update.
-      // O Prisma update exige um ID único no where. Para segurança, verificamos primeiro.
+      // Verificamos primeiro se o usuário é dono da transação.
       const transaction = await prisma.transaction.findFirst({
         where: { id, userId },
       });
@@ -76,10 +99,13 @@ export const TransactionService = {
         throw new Error("Transação não encontrada ou acesso negado.");
       }
 
-      return await prisma.transaction.update({
+      const updated = await prisma.transaction.update({
         where: { id },
         data,
       });
+
+      // Serializamos o Decimal antes de retornar ao Client Component
+      return serializeTransaction(updated);
     } catch (error) {
       console.error("Erro ao atualizar transação:", error);
       throw error instanceof Error ? error : new Error("Erro ao atualizar transação.");

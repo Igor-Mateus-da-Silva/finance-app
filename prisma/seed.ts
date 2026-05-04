@@ -1,10 +1,27 @@
-import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcrypt";
+// IMPORTANTE: usar require() com { override: true } garante que as variáveis sejam
+// carregadas pelo dotenv (que strip aspas corretamente), sobrescrevendo o que o
+// tsx injetou automaticamente (tsx não remove as aspas dos valores).
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+require("dotenv").config({ path: ".env.local", override: true });
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+require("dotenv").config({ path: ".env", override: true });
 
-// O PrismaClient é o nosso tradutor que conversa com o banco de dados.
-const prisma = new PrismaClient();
+import { PrismaClient } from "@prisma/client";
+import { PrismaNeon } from "@prisma/adapter-neon";
+import { Pool, neonConfig } from "@neondatabase/serverless";
+import bcrypt from "bcrypt";
+import ws from "ws";
+
+// Em ambientes Node.js (fora do Edge), precisamos fornecer o WebSocket manualmente.
+// O neonConfig vem do @neondatabase/serverless, não do adapter do Prisma.
+neonConfig.webSocketConstructor = ws;
 
 async function main() {
+  // Criamos a conexão DENTRO da função, assim a DATABASE_URL já está disponível.
+  const neon = new Pool({ connectionString: process.env.DATABASE_URL });
+  const adapter = new PrismaNeon(neon);
+  const prisma = new PrismaClient({ adapter });
+
   console.log("Iniciando o processo de semente (Seed)...");
 
   // 1. Limpar dados existentes (opcional, mas bom para desenvolvimento)
@@ -86,14 +103,13 @@ async function main() {
 
   console.log("Transações fictícias criadas com sucesso!");
   console.log("Seed finalizado!");
+
+  // Fechamos a conexão com o banco ao terminar o script.
+  await prisma.$disconnect();
 }
 
 main()
   .catch((e) => {
     console.error("Erro ao executar o seed:", e);
     process.exit(1);
-  })
-  .finally(async () => {
-    // Sempre fechamos a conexão com o banco ao terminar.
-    await prisma.$disconnect();
   });

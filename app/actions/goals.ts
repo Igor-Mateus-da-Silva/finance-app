@@ -1,54 +1,72 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getYearlyData, saveYearlyData } from "@/utils/json-storage";
-import { Goal } from "@/types";
+import { headers } from "next/headers";
+import { GoalService } from "@/lib/services/goal.service";
 
-export async function addGoal(year: number, month: string, goal: Goal) {
-  const data = await getYearlyData(year);
-  if (!data.months[month].goals) {
-    data.months[month].goals = [];
+/**
+ * Helper para recuperar o userId dos headers
+ */
+async function getUserId() {
+  const headerList = await headers();
+  const userId = headerList.get("x-user-id");
+  if (!userId) {
+    throw new Error("Usuário não autenticado");
   }
-  data.months[month].goals.push(goal);
-  await saveYearlyData(year, data);
-  revalidatePath("/");
-  return data;
+  return userId;
 }
 
-export async function updateGoalAmount(
-  year: number,
-  id: string,
-  addedAmount: number,
-) {
-  const data = await getYearlyData(year);
-
-  // Scan all months to find the goal
-  for (const month of Object.values(data.months)) {
-    const goal = month.goals?.find((g) => g.id === id);
-    if (goal) {
-      goal.currentAmount += addedAmount;
-      await saveYearlyData(year, data);
-      revalidatePath("/");
-      return data;
-    }
+/**
+ * Ação para buscar todas as metas do usuário
+ */
+export async function getGoalsAction() {
+  try {
+    const userId = await getUserId();
+    const data = await GoalService.getGoalsByUserId(userId);
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, message: "Falha ao carregar metas." };
   }
-  return data;
 }
 
-export async function deleteGoal(year: number, id: string) {
-  const data = await getYearlyData(year);
-
-  // Scan all months to remove the goal
-  for (const month of Object.values(data.months)) {
-    if (month.goals) {
-      const initialLength = month.goals.length;
-      month.goals = month.goals.filter((g) => g.id !== id);
-      if (month.goals.length !== initialLength) {
-        await saveYearlyData(year, data);
-        revalidatePath("/");
-        return data;
-      }
-    }
+/**
+ * Ação para criar uma nova meta
+ */
+export async function addGoalAction(data: any) {
+  try {
+    const userId = await getUserId();
+    const newGoal = await GoalService.createGoal(userId, data);
+    revalidatePath("/planning");
+    return { success: true, data: newGoal };
+  } catch (error) {
+    return { success: false, message: "Erro ao salvar meta." };
   }
-  return data;
+}
+
+/**
+ * Ação para contribuir com um valor para a meta
+ */
+export async function updateGoalAmountAction(id: string, amount: number) {
+  try {
+    const userId = await getUserId();
+    const updated = await GoalService.updateGoalAmount(id, userId, amount);
+    revalidatePath("/planning");
+    return { success: true, data: updated };
+  } catch (error) {
+    return { success: false, message: "Erro ao atualizar meta." };
+  }
+}
+
+/**
+ * Ação para excluir uma meta
+ */
+export async function deleteGoalAction(id: string) {
+  try {
+    const userId = await getUserId();
+    await GoalService.deleteGoal(id, userId);
+    revalidatePath("/planning");
+    return { success: true };
+  } catch (error) {
+    return { success: false, message: "Erro ao excluir meta." };
+  }
 }

@@ -1,12 +1,20 @@
 import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 
 // O padrão Singleton garante que teremos apenas UMA instância do Prisma rodando.
-// Isso é muito importante no Next.js porque, durante o desenvolvimento,
-// o código é recarregado muitas vezes (Hot Reload), e não queremos abrir 
-// centenas de conexões com o banco de dados ao mesmo tempo.
+// Usamos o adaptador @prisma/adapter-pg (driver padrão do PostgreSQL para Node.js).
+// O adapter do Neon Serverless seria apenas para Edge Runtime (Cloudflare Workers etc.).
 
 const prismaClientSingleton = () => {
-  return new PrismaClient();
+  // Criamos uma "piscina" (Pool) de conexões com o banco PostgreSQL.
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+  // Criamos o adaptador que faz a ponte entre o Prisma e o driver do pg.
+  const adapter = new PrismaPg(pool);
+
+  // Entregamos o adaptador para o motor do Prisma.
+  return new PrismaClient({ adapter });
 };
 
 declare global {

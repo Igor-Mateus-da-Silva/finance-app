@@ -17,9 +17,10 @@ model User {
   name      String?
   createdAt DateTime @default(now())
 
-  // Relações: Um usuário pode ter várias transações e várias categorias.
+  // Relações: Um usuário pode ter várias transações, categorias e metas.
   transactions Transaction[]
   categories   Category[]
+  goals        Goal[]
 
   @@map("users") // Nome da tabela no banco de dados será "users"
 }
@@ -60,6 +61,24 @@ model Category {
   transactions Transaction[]
 
   @@map("categories")
+}
+
+// Modelo de Meta Financeira: Objetivos de economia do usuário.
+model Goal {
+  id            String   @id @default(cuid())
+  name          String
+  targetAmount  Decimal  @db.Decimal(10, 2)
+  currentAmount Decimal  @db.Decimal(10, 2) @default(0)
+  deadline      DateTime
+  
+  // Relacionamento com Usuário
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("goals")
 }
 
 // Definimos os tipos possíveis de transação: Receita ou Despesa.

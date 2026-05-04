@@ -25,7 +25,7 @@ export async function getTransactions(year: number) {
     const userId = await getUserId();
     const data = await TransactionService.getTransactionsByUserId(userId, year);
     return { success: true, data };
-  } catch (error) {
+  } catch (_error) {
     return { success: false, message: "Falha ao carregar transações." };
   }
 }
@@ -120,7 +120,7 @@ export async function getMonthlySummaryAction(month: number, year: number) {
     const userId = await getUserId();
     const summary = await TransactionService.getTransactionSummary(userId, month, year);
     return { success: true, data: summary };
-  } catch (error) {
+  } catch (_error) {
     return { success: false, message: "Erro ao carregar resumo financeiro." };
   }
 }

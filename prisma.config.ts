@@ -1,13 +1,22 @@
-import { defineConfig } from "prisma/config";
+// O CLI do Prisma não lê .env.local automaticamente — apenas .env.
+// Carregamos manualmente para que db push e migrate funcionem.
+import { config } from "dotenv";
+config({ path: ".env.local", override: true });
+config({ path: ".env", override: true });
 
-// No Prisma 7, as configurações de infraestrutura (como a URL do banco)
-// ficam separadas do desenho das tabelas. Isso é uma boa prática para
-// manter o projeto organizado.
+import { defineConfig, env } from "prisma/config";
+
+// O parâmetro 'channel_binding=require' é incompatível com o motor interno
+// do Prisma CLI. Removemos ele e o '-pooler' para garantir conexão direta.
+const rawUrl = env("DATABASE_URL");
+const cliUrl = rawUrl
+  .replace("&channel_binding=require", "")   // caso venha após outros parâmetros
+  .replace("?channel_binding=require&", "?") // caso seja o primeiro parâmetro
+  .replace("?channel_binding=require", "");  // caso seja o único parâmetro
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
   datasource: {
-    // Aqui dizemos ao Prisma para pegar a URL da variável de ambiente DATABASE_URL
-    url: process.env.DATABASE_URL,
+    url: cliUrl,
   },
 });
