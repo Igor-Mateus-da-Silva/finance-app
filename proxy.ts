@@ -3,14 +3,15 @@ import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
 /**
- * Middleware de Segurança: Atua como a "portaria" do aplicativo.
+ * Proxy de Segurança: Atua como a "portaria" do aplicativo.
  * Ele verifica se o usuário está logado antes de permitir o acesso às páginas.
+ * No Next.js 16, este arquivo se chama proxy.ts e a função deve se chamar 'proxy'.
  */
 
 // 1. Definimos quais rotas são abertas ao público e quais são protegidas.
 const publicRoutes = ["/login", "/api/login"];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Ignoramos arquivos estáticos e pastas do Next.js para não pesar no sistema.
@@ -77,7 +78,7 @@ export async function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// Configuração para dizer ao Next.js em quais caminhos este Middleware deve rodar.
+// Configuração para dizer ao Next.js em quais caminhos este Proxy deve rodar.
 export const config = {
   matcher: [
     /*

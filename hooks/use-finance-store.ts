@@ -1,12 +1,16 @@
 import { create } from "zustand";
-import { Transaction } from "@prisma/client";
+import { Transaction, Category, Goal } from "@prisma/client";
 import { getTransactions, deleteTransactionAction } from "@/app/actions/transactions";
+import { getCategoriesAction } from "@/app/actions/categories";
+import { getGoalsAction, deleteGoalAction } from "@/app/actions/goals";
 import { toast } from "sonner";
 
 interface FinanceState {
   selectedYear: number;
-  selectedMonth: number; // Agora usamos número (0-11) para bater com Date
+  selectedMonth: number;
   transactions: Transaction[];
+  categories: Category[];
+  goals: Goal[];
   isLoading: boolean;
   error: string | null;
 
@@ -14,6 +18,9 @@ interface FinanceState {
   setYear: (year: number) => Promise<void>;
   setMonth: (month: number) => void;
   loadTransactions: () => Promise<void>;
+  loadCategories: () => Promise<void>;
+  loadGoals: () => Promise<void>;
+  refreshData: () => Promise<void>;
   
   // Atualização Otimista: Excluir
   deleteTransactionOptimistic: (id: string) => Promise<void>;
@@ -26,6 +33,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
   selectedYear: getCurrentYear(),
   selectedMonth: getCurrentMonth(),
   transactions: [],
+  categories: [],
+  goals: [],
   isLoading: false,
   error: null,
 
@@ -52,32 +61,49 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     }
   },
 
+  loadCategories: async () => {
+    const result = await getCategoriesAction();
+    if (result.success && result.data) {
+      set({ categories: result.data as Category[] });
+    }
+  },
+
+  loadGoals: async () => {
+    const result = await getGoalsAction();
+    if (result.success && result.data) {
+      set({ goals: result.data as Goal[] });
+    }
+  },
+
+  refreshData: async () => {
+    await Promise.all([
+      get().loadTransactions(), 
+      get().loadCategories(),
+      get().loadGoals()
+    ]);
+  },
+
   /**
    * Exemplo de Atualização Otimista para Exclusão
    */
   deleteTransactionOptimistic: async (id: string) => {
     const { transactions } = get();
-    // 1. Guardamos o estado anterior para o caso de erro (Rollback)
     const previousTransactions = [...transactions];
 
-    // 2. Atualizamos o estado local INSTANTANEAMENTE (Otimismo)
     set({
       transactions: transactions.filter((t) => t.id !== id),
     });
 
     try {
-      // 3. Chamamos o servidor em segundo plano
       const result = await deleteTransactionAction(id);
 
       if (!result.success) {
-        // Se o servidor recusar, voltamos os dados (Rollback)
         set({ transactions: previousTransactions });
         toast.error(result.message || "Não foi possível excluir no servidor.");
       } else {
         toast.success("Excluído com sucesso!");
       }
-    } catch (error) {
-      // Em caso de erro de rede, também fazemos Rollback
+    } catch (_error) {
       set({ transactions: previousTransactions });
       toast.error("Erro de conexão. A transação foi restaurada.");
     }

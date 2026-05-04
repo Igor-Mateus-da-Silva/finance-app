@@ -4,18 +4,20 @@ import { useEffect, useRef } from "react";
 import { useFinanceStore } from "@/hooks/use-finance-store";
 
 export function DataFetcher() {
-  const { selectedYear, loadInitialData, setYear } = useFinanceStore();
+  const { selectedYear, loadTransactions, loadCategories, loadGoals, setYear } = useFinanceStore();
   const loadedYear = useRef<number | null>(null);
 
   useEffect(() => {
     if (loadedYear.current !== selectedYear) {
-      // Actually setYear already fetches data inside the store, but on very first load:
+      // Carregamos as transações e as categorias na primeira vez ou quando o ano muda.
       if (loadedYear.current === null) {
-        loadInitialData();
+        loadTransactions();
+        loadCategories();
+        loadGoals();
       }
       loadedYear.current = selectedYear;
     }
-  }, [selectedYear, loadInitialData]);
+  }, [selectedYear, loadTransactions, loadCategories, loadGoals]);
 
   return null;
 }
