@@ -1,16 +1,16 @@
 import { create } from "zustand";
-import { Transaction, Category, Goal } from "@prisma/client";
 import { getTransactions, deleteTransactionAction } from "@/app/actions/transactions";
 import { getCategoriesAction } from "@/app/actions/categories";
 import { getGoalsAction, deleteGoalAction } from "@/app/actions/goals";
+import { SerializedTransaction, SerializedCategory, SerializedGoal } from "@/types/serialized";
 import { toast } from "sonner";
 
 interface FinanceState {
   selectedYear: number;
   selectedMonth: number;
-  transactions: Transaction[];
-  categories: Category[];
-  goals: Goal[];
+  transactions: SerializedTransaction[];
+  categories: SerializedCategory[];
+  goals: SerializedGoal[];
   isLoading: boolean;
   error: string | null;
 
@@ -54,7 +54,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     const result = await getTransactions(selectedYear);
     
     if (result.success && result.data) {
-      set({ transactions: result.data as Transaction[], isLoading: false });
+      set({ transactions: result.data as SerializedTransaction[], isLoading: false });
     } else {
       set({ error: result.message || "Erro ao carregar", isLoading: false });
       toast.error(result.message || "Falha ao sincronizar com o banco.");
@@ -64,14 +64,14 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
   loadCategories: async () => {
     const result = await getCategoriesAction();
     if (result.success && result.data) {
-      set({ categories: result.data as Category[] });
+      set({ categories: result.data as SerializedCategory[] });
     }
   },
 
   loadGoals: async () => {
     const result = await getGoalsAction();
     if (result.success && result.data) {
-      set({ goals: result.data as Goal[] });
+      set({ goals: result.data as SerializedGoal[] });
     }
   },
 
