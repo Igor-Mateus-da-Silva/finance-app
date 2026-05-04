@@ -27,54 +27,44 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { addExpense, deleteExpense } from "@/app/actions/finance";
-import { generateId } from "@/lib/utils";
+import { addTransactionAction } from "@/app/actions/transactions";
 import { toast } from "sonner";
-import {
-  formatCurrency,
-  calculateTotalExpenses,
-} from "@/utils/finance-calculator";
+import { formatCurrency } from "@/utils/finance-calculator";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Trash2 } from "lucide-react";
+import { Trash2, ShoppingCart } from "lucide-react";
 
 export default function ExpensesPage() {
-  const { data, selectedYear, selectedMonth, refreshData } = useFinanceStore();
+  const { 
+    transactions, 
+    categories, 
+    selectedYear, 
+    selectedMonth, 
+    refreshData, 
+    deleteTransactionOptimistic 
+  } = useFinanceStore();
 
-  const [desc, setDesc] = useState("");
+  const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
-  const [category, setCategory] = useState<
-    "essential_fixed" | "nonessential_fixed" | "variable"
-  >("essential_fixed");
+  const [categoryId, setCategoryId] = useState("");
   const [isAdding, setIsAdding] = useState(false);
 
-  if (!data) return null;
+  // Filtramos as despesas do mês selecionado
+  const expenseTransactions = transactions.filter((t) => {
+    const d = new Date(t.date);
+    return (
+      t.type === "EXPENSE" &&
+      d.getMonth() === selectedMonth &&
+      d.getFullYear() === selectedYear
+    );
+  }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  const monthData = data.months[selectedMonth] || {
-    expenses: { essential_fixed: [], nonessential_fixed: [], variable: [] },
-  };
-  const totalExpenses = calculateTotalExpenses(monthData.expenses);
-
-  // Flatten for table display
-  const allExpenses = [
-    ...(monthData.expenses.essential_fixed || []).map((e) => ({
-      ...e,
-      categoryLabel: "Fixo Essencial",
-    })),
-    ...(monthData.expenses.nonessential_fixed || []).map((e) => ({
-      ...e,
-      categoryLabel: "Fixo Não Essencial",
-    })),
-    ...(monthData.expenses.variable || []).map((e) => ({
-      ...e,
-      categoryLabel: "Variável",
-    })),
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const totalExpenses = expenseTransactions.reduce((sum, t) => sum + t.amount, 0);
 
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!desc || !amount || !date) {
+    if (!description || !amount || !date || !categoryId) {
       toast.error("Por favor, preencha todos os campos.");
       return;
     }
@@ -86,35 +76,34 @@ export default function ExpensesPage() {
         throw new Error("O valor deve ser um número positivo.");
       }
 
-      await addExpense(selectedYear, selectedMonth, {
-        id: generateId(),
-        description: desc,
+      const result = await addTransactionAction({
+        description,
         amount: parsedAmount,
-        date: date,
-        category: category,
+        date: new Date(date),
+        type: "EXPENSE",
+        categoryId,
       });
-      await refreshData();
-      toast.success("Despesa adicionada!");
-      setDesc("");
-      setAmount("");
-      setDate("");
+
+      if (result.success) {
+        await refreshData();
+        toast.success("Despesa adicionada com sucesso!");
+        setDescription("");
+        setAmount("");
+        setDate("");
+        setCategoryId("");
+      } else {
+        throw new Error(result.message);
+      }
     } catch (e: any) {
-      console.error("Erro ao adicionar despesa:", e);
-      toast.error(e.message || "Erro ao adicionar. Verifique os dados.");
+      toast.error(e.message || "Erro ao adicionar despesa.");
     } finally {
       setIsAdding(false);
     }
   };
 
-  const handleDeleteExpense = async (id: string, cat: string) => {
-    try {
-      await deleteExpense(selectedYear, selectedMonth, cat as any, id);
-      await refreshData();
-      toast.success("Despesa removida!");
-    } catch (e) {
-      toast.error("Erro ao remover despesa.");
-    }
-  };
+  const expenseCategories = categories.filter(c => 
+    !["Salário", "Freelance", "Renda Extra", "Investimentos"].includes(c.name)
+  );
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -122,14 +111,19 @@ export default function ExpensesPage() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Gastos</h2>
           <p className="text-muted-foreground mt-1">
-            Registre e acompanhe suas despesas.
+            Registre e acompanhe suas despesas no PostgreSQL.
           </p>
         </div>
         <Card className="bg-destructive text-destructive-foreground">
-          <CardContent className="py-4">
-            <div className="text-sm opacity-80">Gasto Total do Mês</div>
-            <div className="text-2xl font-bold">
-              {formatCurrency(totalExpenses)}
+          <CardContent className="py-4 flex items-center gap-4">
+            <div className="p-2 bg-white/20 rounded-lg">
+              <ShoppingCart className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="text-sm opacity-80">Gasto Total do Mês</div>
+              <div className="text-2xl font-bold">
+                {formatCurrency(totalExpenses)}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -148,8 +142,8 @@ export default function ExpensesPage() {
                 <Input
                   id="desc"
                   placeholder="Ex: Conta de Luz"
-                  value={desc}
-                  onChange={(e) => setDesc(e.target.value)}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
                   required
                 />
               </div>
@@ -177,28 +171,21 @@ export default function ExpensesPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="category">Categoria</Label>
-                <Select
-                  value={category}
-                  onValueChange={(val: any) => setCategory(val)}
-                >
+                <Select value={categoryId} onValueChange={setCategoryId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione a categoria" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="essential_fixed">
-                      Fixo Essencial (Necessidade)
-                    </SelectItem>
-                    <SelectItem value="nonessential_fixed">
-                      Fixo Não Essencial (Desejo)
-                    </SelectItem>
-                    <SelectItem value="variable">
-                      Variável (Lazer, Compras)
-                    </SelectItem>
+                    {expenseCategories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <Button type="submit" disabled={isAdding} className="w-full mt-2">
-                Adicionar Despesa
+                {isAdding ? "Adicionando..." : "Adicionar Despesa"}
               </Button>
             </form>
           </CardContent>
@@ -208,12 +195,12 @@ export default function ExpensesPage() {
           <CardHeader>
             <CardTitle>Histórico de Despesas</CardTitle>
             <CardDescription>
-              Todas as despesas de {selectedMonth}/{selectedYear}
+              Todas as despesas de {selectedMonth + 1}/{selectedYear}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {allExpenses.length === 0 ? (
-              <p className="text-muted-foreground text-sm text-center py-8">
+            {expenseTransactions.length === 0 ? (
+              <p className="text-muted-foreground text-sm text-center py-12 border-2 border-dashed rounded-lg">
                 Nenhuma despesa registrada neste mês.
               </p>
             ) : (
@@ -229,31 +216,29 @@ export default function ExpensesPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {allExpenses.map((expense) => (
-                      <TableRow key={expense.id}>
+                    {expenseTransactions.map((t) => (
+                      <TableRow key={t.id}>
                         <TableCell className="whitespace-nowrap">
-                          {format(parseISO(expense.date), "dd 'de' MMM", {
+                          {format(new Date(t.date), "dd 'de' MMM", {
                             locale: ptBR,
                           })}
                         </TableCell>
                         <TableCell className="font-medium">
-                          {expense.description}
+                          {t.description}
                         </TableCell>
                         <TableCell>
-                          <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                            {expense.categoryLabel}
+                          <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold">
+                            {t.category?.name || "Sem categoria"}
                           </span>
                         </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {formatCurrency(expense.amount)}
+                        <TableCell className="text-right font-bold text-red-600 dark:text-red-500">
+                          {formatCurrency(t.amount)}
                         </TableCell>
                         <TableCell className="text-right">
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() =>
-                              handleDeleteExpense(expense.id, expense.category)
-                            }
+                            onClick={() => deleteTransactionOptimistic(t.id)}
                             className="text-muted-foreground hover:text-red-600 h-8 w-8"
                           >
                             <Trash2 className="h-4 w-4" />

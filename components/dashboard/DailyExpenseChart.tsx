@@ -14,37 +14,40 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Expense } from "@/types";
 import { formatCurrency } from "@/utils/finance-calculator";
-import { format, parseISO, compareAsc } from "date-fns";
+import { format } from "date-fns";
+
+// Tipo simplificado de transação que o componente precisa.
+interface SimpleTransaction {
+  amount: number;
+  date: Date | string;
+  type: string;
+}
 
 interface Props {
-  expenses: {
-    [key in "essential_fixed" | "nonessential_fixed" | "variable"]: Expense[];
-  };
+  // Agora recebe diretamente o array de transações de despesa do mês.
+  expenses: SimpleTransaction[];
 }
 
 export function DailyExpenseChart({ expenses }: Props) {
-  // Flatten and sort by date
-  const allExpenses = [
-    ...(expenses.essential_fixed || []),
-    ...(expenses.nonessential_fixed || []),
-    ...(expenses.variable || []),
-  ].sort((a, b) => compareAsc(parseISO(a.date), parseISO(b.date)));
-
-  // Group by day using date-fns
+  // Agrupamos os gastos por dia para exibir no gráfico de barras.
   const groupedData: Record<string, number> = {};
-  allExpenses.forEach((exp) => {
-    // Expected format: YYYY-MM-DD
-    const dateStr = format(parseISO(exp.date), "dd/MM");
+
+  expenses.forEach((t) => {
+    // Garantimos que a data seja um objeto Date, pois pode vir como string do JSON.
+    const date = typeof t.date === "string" ? new Date(t.date) : t.date;
+    const dateStr = format(date, "dd/MM");
+
     if (!groupedData[dateStr]) groupedData[dateStr] = 0;
-    groupedData[dateStr] += exp.amount;
+    groupedData[dateStr] += t.amount;
   });
 
-  const chartData = Object.keys(groupedData).map((key) => ({
-    date: key,
-    total: groupedData[key],
-  }));
+  const chartData = Object.keys(groupedData)
+    .sort()
+    .map((key) => ({
+      date: key,
+      total: groupedData[key],
+    }));
 
   return (
     <Card className="col-span-1 lg:col-span-2 border shadow-sm">
@@ -81,14 +84,13 @@ export function DailyExpenseChart({ expenses }: Props) {
                 tickFormatter={(val) => `R$ ${val}`}
               />
               <Tooltip
-                formatter={(val: any) => formatCurrency(Number(val) || 0)}
+                formatter={(val: unknown) => formatCurrency(Number(val) || 0)}
                 cursor={{ fill: "transparent" }}
               />
               <Bar
                 dataKey="total"
-                fill="var(--color-primary)"
+                fill="#6366f1"
                 radius={[4, 4, 0, 0]}
-                className="fill-primary"
               />
             </BarChart>
           </ResponsiveContainer>

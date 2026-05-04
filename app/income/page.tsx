@@ -21,101 +21,91 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  updateBaseIncome,
-  addExtraIncome,
-  deleteExtraIncome,
-} from "@/app/actions/finance";
-import { generateId } from "@/lib/utils";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { addTransactionAction } from "@/app/actions/transactions";
 import { toast } from "sonner";
-import {
-  formatCurrency,
-  calculateTotalIncome,
-} from "@/utils/finance-calculator";
-import { Trash2 } from "lucide-react";
+import { formatCurrency } from "@/utils/finance-calculator";
+import { Trash2, Wallet } from "lucide-react";
 
 export default function IncomePage() {
-  const { data, selectedYear, selectedMonth, refreshData } = useFinanceStore();
+  const { 
+    transactions, 
+    categories, 
+    selectedYear, 
+    selectedMonth, 
+    refreshData, 
+    deleteTransactionOptimistic 
+  } = useFinanceStore();
 
-  // Local state for forms
-  const [salary, setSalary] = useState<string>("");
-  const [vr, setVr] = useState<string>("");
-  const [extraDesc, setExtraDesc] = useState("");
-  const [extraAmount, setExtraAmount] = useState("");
-  const [isUpdatingBase, setIsUpdatingBase] = useState(false);
-  const [isAddingExtra, setIsAddingExtra] = useState(false);
+  // Estados locais para os formulários
+  const [description, setDescription] = useState("");
+  const [amount, setAmount] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
 
-  if (!data) return null;
+  // Filtramos as receitas do mês selecionado
+  const incomeTransactions = transactions.filter((t) => {
+    const date = new Date(t.date);
+    return (
+      t.type === "INCOME" &&
+      date.getMonth() === selectedMonth &&
+      date.getFullYear() === selectedYear
+    );
+  });
 
-  const monthData = data.months[selectedMonth] || {
-    income: { salary: 0, vr: 0, extra: [] },
-  };
-  const totalIncome = calculateTotalIncome(monthData.income);
+  const totalIncome = incomeTransactions.reduce((sum, t) => sum + t.amount, 0);
 
-  // Sync local state when month/data changes
-  // It's better to use initial values on load or controlled inputs
-  // We'll update the initial state in a useEffect or directly use monthData if local is empty?
-  // Let's use controlled with a "save" button that compares with original.
-
-  const handleUpdateBase = async () => {
-    setIsUpdatingBase(true);
-    try {
-      const parsedSalary = parseFloat(salary.replace(",", "."));
-      const parsedVr = parseFloat(vr.replace(",", "."));
-
-      const newSalary = isNaN(parsedSalary)
-        ? monthData.income.salary
-        : parsedSalary;
-      const newVr = isNaN(parsedVr) ? monthData.income.vr : parsedVr;
-
-      await updateBaseIncome(selectedYear, selectedMonth, newSalary, newVr);
-      await refreshData();
-      toast.success("Renda base atualizada com sucesso!");
-      setSalary("");
-      setVr("");
-    } catch (e) {
-      toast.error("Erro ao atualizar renda.");
-    } finally {
-      setIsUpdatingBase(false);
-    }
-  };
-
-  const handleAddExtra = async (e: React.FormEvent) => {
+  const handleAddIncome = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!extraDesc || !extraAmount) return;
+    if (!description || !amount || !categoryId) {
+      toast.error("Por favor, preencha todos os campos.");
+      return;
+    }
 
-    setIsAddingExtra(true);
+    setIsAdding(true);
     try {
-      const amount = Number(extraAmount.replace(",", "."));
-      if (isNaN(amount) || amount <= 0) {
+      const parsedAmount = Number(amount.replace(",", "."));
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
         throw new Error("O valor deve ser um número positivo.");
       }
 
-      await addExtraIncome(selectedYear, selectedMonth, {
-        id: generateId(),
-        description: extraDesc,
-        amount,
+      // Criamos a transação para o dia 1 do mês selecionado (simplificação)
+      const date = new Date(selectedYear, selectedMonth, 1);
+
+      const result = await addTransactionAction({
+        description,
+        amount: parsedAmount,
+        date,
+        type: "INCOME",
+        categoryId,
       });
-      await refreshData();
-      toast.success("Renda extra adicionada!");
-      setExtraDesc("");
-      setExtraAmount("");
+
+      if (result.success) {
+        await refreshData();
+        toast.success("Receita adicionada com sucesso!");
+        setDescription("");
+        setAmount("");
+        setCategoryId("");
+      } else {
+        throw new Error(result.message);
+      }
     } catch (e: any) {
-      console.error("Erro ao adicionar renda extra:", e);
-      toast.error(e.message || "Erro ao adicionar renda extra. Verifique o valor.");
+      toast.error(e.message || "Erro ao adicionar receita.");
     } finally {
-      setIsAddingExtra(false);
+      setIsAdding(false);
     }
   };
 
-  const handleDeleteExtra = async (id: string) => {
-    try {
-      await deleteExtraIncome(selectedYear, selectedMonth, id);
-      await refreshData();
-      toast.success("Renda extra removida!");
-    } catch (e) {
-      toast.error("Erro ao remover.");
-    }
-  };
+  const incomeCategories = categories.filter(c => 
+    ["Salário", "Freelance", "Renda Extra", "Investimentos", "Venda", "Bônus"].includes(c.name) || 
+    c.name.toLowerCase().includes("renda") || 
+    c.name.toLowerCase().includes("ganho")
+  );
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -123,81 +113,41 @@ export default function IncomePage() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Renda</h2>
           <p className="text-muted-foreground mt-1">
-            Gerencie seus ganhos mensais.
+            Gerencie seus ganhos mensais no banco de dados.
           </p>
         </div>
         <Card className="bg-primary text-primary-foreground">
-          <CardContent className="py-4">
-            <div className="text-sm opacity-80">Renda Total do Mês</div>
-            <div className="text-2xl font-bold">
-              {formatCurrency(totalIncome)}
+          <CardContent className="py-4 flex items-center gap-4">
+            <div className="p-2 bg-white/20 rounded-lg">
+              <Wallet className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="text-sm opacity-80">Renda Total do Mês</div>
+              <div className="text-2xl font-bold">
+                {formatCurrency(totalIncome)}
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-[1fr_2fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Renda Base</CardTitle>
+            <CardTitle>Nova Receita</CardTitle>
             <CardDescription>
-              Atualize seu salário e benefícios fixos
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>
-                Salário Atual: {formatCurrency(monthData.income.salary || 0)}
-              </Label>
-              <div className="flex gap-2">
-                <Input
-                  type="number"
-                  placeholder="Novo Salário"
-                  value={salary}
-                  onChange={(e) => setSalary(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>
-                Vale Refeição / Alimentação:{" "}
-                {formatCurrency(monthData.income.vr || 0)}
-              </Label>
-              <div className="flex gap-2">
-                <Input
-                  type="number"
-                  placeholder="Novo VR/VA"
-                  value={vr}
-                  onChange={(e) => setVr(e.target.value)}
-                />
-              </div>
-            </div>
-            <Button
-              onClick={handleUpdateBase}
-              className="w-full mt-4"
-              disabled={isUpdatingBase || (!salary && !vr)}
-            >
-              Atualizar Renda Base
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Nova Renda Extra</CardTitle>
-            <CardDescription>
-              Adicione bônus, freelas ou outros ganhos.
+              Adicione salário, bônus ou qualquer entrada.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleAddExtra} className="space-y-4">
+            <form onSubmit={handleAddIncome} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="desc">Descrição</Label>
                 <Input
                   id="desc"
-                  placeholder="Ex: Trabalho Freelancer"
-                  value={extraDesc}
-                  onChange={(e) => setExtraDesc(e.target.value)}
+                  placeholder="Ex: Salário Mensal"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
                   required
                 />
               </div>
@@ -208,63 +158,97 @@ export default function IncomePage() {
                   type="number"
                   step="0.01"
                   placeholder="0.00"
-                  value={extraAmount}
-                  onChange={(e) => setExtraAmount(e.target.value)}
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
                   required
                 />
               </div>
-              <Button type="submit" disabled={isAddingExtra} className="w-full">
-                Adicionar Extra
+              <div className="space-y-2">
+                <Label htmlFor="category">Categoria</Label>
+                <Select value={categoryId} onValueChange={setCategoryId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {incomeCategories.length > 0 ? (
+                      incomeCategories.map(cat => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      categories.map(cat => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button type="submit" disabled={isAdding} className="w-full">
+                {isAdding ? "Adicionando..." : "Adicionar Receita"}
               </Button>
             </form>
           </CardContent>
         </Card>
-      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Histórico de Rendas Extras</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {monthData.income.extra.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              Nenhuma renda extra adicionada neste mês.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
-                  <TableHead className="w-[80px] text-right">Ação</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {monthData.income.extra.map((extra) => (
-                  <TableRow key={extra.id}>
-                    <TableCell className="font-medium">
-                      {extra.description}
-                    </TableCell>
-                    <TableCell className="text-right text-green-600 dark:text-green-500 font-medium">
-                      {formatCurrency(extra.amount)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteExtra(extra.id)}
-                        className="text-red-500 hover:text-red-600"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Histórico de Receitas</CardTitle>
+            <CardDescription>
+              Entradas registradas para este período.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {incomeTransactions.length === 0 ? (
+              <div className="text-center py-12 border-2 border-dashed rounded-lg">
+                <p className="text-muted-foreground">Nenhuma receita encontrada.</p>
+              </div>
+            ) : (
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead>Categoria</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                      <TableHead className="w-[50px]"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {incomeTransactions.map((t) => (
+                      <TableRow key={t.id}>
+                        <TableCell className="font-medium">
+                          {t.description}
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-xs bg-secondary px-2 py-1 rounded-full">
+                            {t.category?.name || "Sem categoria"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right text-green-600 dark:text-green-500 font-bold">
+                          {formatCurrency(t.amount)}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => deleteTransactionOptimistic(t.id)}
+                            className="text-muted-foreground hover:text-red-500"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

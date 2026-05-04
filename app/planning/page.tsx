@@ -13,29 +13,20 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { addGoal, updateGoalAmount, deleteGoal } from "@/app/actions/goals";
-import { generateId } from "@/lib/utils";
+import { addGoalAction, updateGoalAmountAction, deleteGoalAction } from "@/app/actions/goals";
 import { toast } from "sonner";
 import { formatCurrency } from "@/utils/finance-calculator";
 import { Trash2, Plus, Target } from "lucide-react";
-import { Goal } from "@/types";
 
 export default function PlanningPage() {
-  const { data, selectedYear, selectedMonth, refreshData } = useFinanceStore();
+  const { goals, selectedYear, refreshData } = useFinanceStore();
 
   const [name, setName] = useState("");
   const [targetAmount, setTargetAmount] = useState("");
   const [currentAmount, setCurrentAmount] = useState("");
   const [deadline, setDeadline] = useState("");
   const [isAdding, setIsAdding] = useState(false);
-  const [contributeAmounts, setContributeAmounts] = useState<
-    Record<string, string>
-  >({});
-
-  if (!data) return null;
-
-  // Aggregate all goals from all months of the selected year
-  const goals = Object.values(data.months).flatMap((m) => m.goals || []);
+  const [contributeAmounts, setContributeAmounts] = useState<Record<string, string>>({});
 
   const handleAddGoal = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,30 +38,31 @@ export default function PlanningPage() {
     setIsAdding(true);
     try {
       const parsedTarget = Number(targetAmount.replace(",", "."));
-      const parsedCurrent = currentAmount
-        ? Number(currentAmount.replace(",", "."))
-        : 0;
+      const parsedCurrent = currentAmount ? Number(currentAmount.replace(",", ".")) : 0;
 
       if (isNaN(parsedTarget) || parsedTarget <= 0) {
         throw new Error("O valor objetivo deve ser um número positivo.");
       }
 
-      await addGoal(selectedYear, selectedMonth, {
-        id: generateId(),
+      const result = await addGoalAction({
         name,
         targetAmount: parsedTarget,
         currentAmount: isNaN(parsedCurrent) ? 0 : parsedCurrent,
-        deadline,
+        deadline: new Date(deadline),
       });
-      await refreshData();
-      toast.success("Meta financeira criada!");
-      setName("");
-      setTargetAmount("");
-      setCurrentAmount("");
-      setDeadline("");
+
+      if (result.success) {
+        await refreshData();
+        toast.success("Meta financeira criada!");
+        setName("");
+        setTargetAmount("");
+        setCurrentAmount("");
+        setDeadline("");
+      } else {
+        throw new Error(result.message);
+      }
     } catch (e: any) {
-      console.error("Erro ao adicionar meta:", e);
-      toast.error(e.message || "Erro ao adicionar meta. Verifique os dados.");
+      toast.error(e.message || "Erro ao adicionar meta.");
     } finally {
       setIsAdding(false);
     }
@@ -78,9 +70,11 @@ export default function PlanningPage() {
 
   const handleDeleteGoal = async (id: string) => {
     try {
-      await deleteGoal(selectedYear, id);
-      await refreshData();
-      toast.success("Meta removida!");
+      const result = await deleteGoalAction(id);
+      if (result.success) {
+        await refreshData();
+        toast.success("Meta removida!");
+      }
     } catch (e) {
       toast.error("Erro ao remover meta.");
     }
@@ -97,18 +91,21 @@ export default function PlanningPage() {
         return;
       }
 
-      await updateGoalAmount(selectedYear, id, parsedAmount);
-      await refreshData();
-      toast.success("Valor adicionado à meta!");
-      setContributeAmounts((prev) => ({ ...prev, [id]: "" }));
+      const result = await updateGoalAmountAction(id, parsedAmount);
+      if (result.success) {
+        await refreshData();
+        toast.success("Valor adicionado à meta!");
+        setContributeAmounts((prev) => ({ ...prev, [id]: "" }));
+      }
     } catch (e) {
-      console.error("Erro ao contribuir para meta:", e);
       toast.error("Erro ao atualizar meta.");
     }
   };
 
-  const calculateProgress = (goal: Goal) => {
-    return Math.min((goal.currentAmount / goal.targetAmount) * 100, 100);
+  const calculateProgress = (goal: any) => {
+    const current = Number(goal.currentAmount);
+    const target = Number(goal.targetAmount);
+    return Math.min((current / target) * 100, 100);
   };
 
   return (
@@ -118,7 +115,7 @@ export default function PlanningPage() {
           Planejamento e Objetivos
         </h2>
         <p className="text-muted-foreground mt-1">
-          Defina metas para o ano de {selectedYear}.
+          Defina metas financeiras sincronizadas com o PostgreSQL.
         </p>
       </div>
 
@@ -127,7 +124,7 @@ export default function PlanningPage() {
           <CardHeader>
             <CardTitle>Nova Meta</CardTitle>
             <CardDescription>
-              Crie um novo objetivo financeiro para {selectedYear}
+              Crie um novo objetivo financeiro.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -136,7 +133,7 @@ export default function PlanningPage() {
                 <Label htmlFor="name">Nome da Meta</Label>
                 <Input
                   id="name"
-                  placeholder="Ex: Viagem de Férias, Reserva de Emergência"
+                  placeholder="Ex: Viagem de Férias"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
@@ -148,16 +145,14 @@ export default function PlanningPage() {
                   id="targetAmount"
                   type="number"
                   step="0.01"
-                  placeholder="5000.00"
+                  placeholder="0.00"
                   value={targetAmount}
                   onChange={(e) => setTargetAmount(e.target.value)}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="currentAmount">
-                  Valor Atual Já Poupado (R$)
-                </Label>
+                <Label htmlFor="currentAmount">Valor Atual Já Poupado (R$)</Label>
                 <Input
                   id="currentAmount"
                   type="number"
@@ -178,27 +173,20 @@ export default function PlanningPage() {
                 />
               </div>
               <Button type="submit" disabled={isAdding} className="w-full mt-2">
-                Criar Meta
+                {isAdding ? "Criando..." : "Criar Meta"}
               </Button>
             </form>
           </CardContent>
         </Card>
 
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold">
-            Suas Metas de {selectedYear}
-          </h3>
+          <h3 className="text-xl font-semibold">Suas Metas Atuais</h3>
 
           {goals.length === 0 ? (
             <Card className="bg-muted/50 border-dashed">
               <CardContent className="flex flex-col items-center justify-center h-48 text-center">
                 <Target className="h-10 w-10 text-muted-foreground mb-4 opacity-50" />
-                <p className="text-muted-foreground">
-                  Nenhuma meta criada para este ano.
-                </p>
-                <p className="text-sm text-muted-foreground opacity-80 mt-1">
-                  Use o formulário ao lado para começar o seu planejamento.
-                </p>
+                <p className="text-muted-foreground">Nenhuma meta criada.</p>
               </CardContent>
             </Card>
           ) : (
@@ -213,8 +201,7 @@ export default function PlanningPage() {
                       <div>
                         <CardTitle className="text-base">{goal.name}</CardTitle>
                         <CardDescription className="text-xs">
-                          Prazo:{" "}
-                          {new Date(goal.deadline).toLocaleDateString("pt-BR")}
+                          Prazo: {new Date(goal.deadline).toLocaleDateString("pt-BR")}
                         </CardDescription>
                       </div>
                       <Button
@@ -229,10 +216,10 @@ export default function PlanningPage() {
                     <CardContent className="flex-1 pb-3 space-y-3">
                       <div className="flex justify-between text-sm">
                         <span className="font-medium text-muted-foreground">
-                          {formatCurrency(goal.currentAmount)}
+                          {formatCurrency(Number(goal.currentAmount))}
                         </span>
                         <span className="font-semibold text-primary">
-                          {formatCurrency(goal.targetAmount)}
+                          {formatCurrency(Number(goal.targetAmount))}
                         </span>
                       </div>
 
@@ -251,7 +238,7 @@ export default function PlanningPage() {
                         <div className="flex items-center gap-2 pt-3 w-full">
                           <Input
                             type="number"
-                            placeholder="R$ Contribuir"
+                            placeholder="Contribuir"
                             className="h-8 text-xs"
                             value={contributeAmounts[goal.id] || ""}
                             onChange={(e) =>
@@ -268,7 +255,7 @@ export default function PlanningPage() {
                             disabled={!contributeAmounts[goal.id]}
                           >
                             <Plus className="h-3 w-3 mr-1" />
-                            Adicionar
+                            OK
                           </Button>
                         </div>
                       ) : (

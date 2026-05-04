@@ -15,28 +15,26 @@ import {
 } from "@/components/ui/card";
 import { formatCurrency } from "@/utils/finance-calculator";
 
-const COLORS = ["#ef4444", "#f59e0b", "#3b82f6"]; // Red, Amber, Blue
+// Paleta de cores para até 8 categorias diferentes.
+const COLORS = [
+  "#ef4444", "#f59e0b", "#3b82f6", "#10b981",
+  "#8b5cf6", "#f97316", "#06b6d4", "#84cc16",
+];
 
 interface Props {
-  data: {
-    essential: number;
-    nonessential: number;
-    variable: number;
-  };
+  // Aceita um array dinâmico de categorias com nome e valor total.
+  data: { name: string; value: number }[];
 }
 
 export function ExpenseDistributionChart({ data }: Props) {
-  const chartData = [
-    { name: "Essenciais", value: data.essential },
-    { name: "Não Essenciais", value: data.nonessential },
-    { name: "Variáveis", value: data.variable },
-  ].filter((item) => item.value > 0);
+  // Filtramos categorias com valor zero para não poluir o gráfico.
+  const chartData = data.filter((item) => item.value > 0);
 
   return (
     <Card className="col-span-1 border shadow-sm">
       <CardHeader>
         <CardTitle>Distribuição de Gastos</CardTitle>
-        <CardDescription>Por categoria principal</CardDescription>
+        <CardDescription>Por categoria</CardDescription>
       </CardHeader>
       <CardContent className="h-[300px] w-full mt-4">
         {chartData.length === 0 ? (
@@ -63,7 +61,7 @@ export function ExpenseDistributionChart({ data }: Props) {
                 ))}
               </Pie>
               <Tooltip
-                formatter={(val: any) => formatCurrency(Number(val) || 0)}
+                formatter={(val: unknown) => formatCurrency(Number(val) || 0)}
               />
               <Legend verticalAlign="bottom" height={36} />
             </PieChart>

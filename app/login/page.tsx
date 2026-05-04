@@ -23,8 +23,8 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  // Need to call loadInitialData after login to populate store
-  const { loadInitialData } = useFinanceStore();
+  // Need to call loadTransactions after login to populate store
+  const { loadTransactions } = useFinanceStore();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +50,7 @@ export default function LoginPage() {
         toast.error(data.error || "Falha na autenticação");
       } else {
         toast.success("Login realizado com sucesso!");
-        await loadInitialData(); // Load data before redirect
+        await loadTransactions(); // Load data before redirect
         router.push("/");
       }
     } catch (err) {
