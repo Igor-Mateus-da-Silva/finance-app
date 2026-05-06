@@ -163,9 +163,9 @@ export default function SettingsPage() {
                 <Label>Tipo</Label>
                 <Select
                   value={newCatType}
-                  onValueChange={(val: "INCOME" | "EXPENSE") =>
-                    setNewCatType(val)
-                  }
+                  onValueChange={(val: "INCOME" | "EXPENSE" | null) => {
+                    if (val) setNewCatType(val);
+                  }}
                   disabled={isCreatingCat}
                 >
                   <SelectTrigger className="w-full h-10">
