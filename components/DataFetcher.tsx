@@ -9,12 +9,15 @@ export function DataFetcher() {
 
   useEffect(() => {
     if (loadedYear.current !== selectedYear) {
-      // Carregamos as transações e as categorias na primeira vez ou quando o ano muda.
+      // Sempre carregamos as transações do novo ano selecionado
+      loadTransactions();
+      
+      // Categorias e Metas carregamos apenas na primeira vez (são globais)
       if (loadedYear.current === null) {
-        loadTransactions();
         loadCategories();
         loadGoals();
       }
+      
       loadedYear.current = selectedYear;
     }
   }, [selectedYear, loadTransactions, loadCategories, loadGoals]);

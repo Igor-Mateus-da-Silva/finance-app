@@ -11,7 +11,7 @@ import { jwtVerify } from "jose";
 // 1. Definimos quais rotas são abertas ao público e quais são protegidas.
 const publicRoutes = ["/login", "/api/login"];
 
-export async function proxy(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Ignoramos arquivos estáticos e pastas do Next.js para não pesar no sistema.

@@ -65,6 +65,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     const result = await getCategoriesAction();
     if (result.success && result.data) {
       set({ categories: result.data as SerializedCategory[] });
+    } else {
+      toast.error(result.message || "Falha ao carregar categorias.");
     }
   },
 

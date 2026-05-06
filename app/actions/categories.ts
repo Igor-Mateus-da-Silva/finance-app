@@ -21,6 +21,10 @@ async function getUserId() {
 export async function getCategoriesAction() {
   try {
     const userId = await getUserId();
+    
+    // Garantimos que o usuário tenha categorias padrão se for a primeira vez.
+    await CategoryService.ensureDefaultCategories(userId);
+    
     const categories = await CategoryService.getCategoriesByUserId(userId);
     return { success: true, data: categories };
   } catch (error) {
