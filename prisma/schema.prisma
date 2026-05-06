@@ -52,6 +52,7 @@ model Transaction {
 model Category {
   id    String @id @default(cuid())
   name  String
+  type  TransactionType @default(EXPENSE)
 
   // Relacionamento com Usuário
   // Assim, cada usuário pode ter suas próprias categorias personalizadas.

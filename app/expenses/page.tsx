@@ -101,9 +101,7 @@ export default function ExpensesPage() {
     }
   };
 
-  const expenseCategories = categories.filter(c => 
-    !["Salário", "Freelance", "Renda Extra", "Investimentos"].includes(c.name)
-  );
+  const expenseCategories = categories.filter(c => c.type === "EXPENSE");
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">

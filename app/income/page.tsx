@@ -101,11 +101,7 @@ export default function IncomePage() {
     }
   };
 
-  const incomeCategories = categories.filter(c => 
-    ["Salário", "Freelance", "Renda Extra", "Investimentos", "Venda", "Bônus"].includes(c.name) || 
-    c.name.toLowerCase().includes("renda") || 
-    c.name.toLowerCase().includes("ganho")
-  );
+  const incomeCategories = categories.filter(c => c.type === "INCOME");
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">

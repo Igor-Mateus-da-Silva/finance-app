@@ -24,18 +24,38 @@ export const CategoryService = {
    * Busca ou cria categorias padrão para um novo usuário.
    */
   async ensureDefaultCategories(userId: string) {
-    const defaults = ["Alimentação", "Transporte", "Lazer", "Moradia", "Salário"];
+    const defaults: { name: string; type: "INCOME" | "EXPENSE" }[] = [
+      { name: "Alimentação", type: "EXPENSE" },
+      { name: "Transporte", type: "EXPENSE" },
+      { name: "Lazer", type: "EXPENSE" },
+      { name: "Moradia", type: "EXPENSE" },
+      { name: "Salário", type: "INCOME" },
+    ];
     
-    for (const name of defaults) {
+    for (const cat of defaults) {
       const existing = await prisma.category.findFirst({
-        where: { name, userId }
+        where: { name: cat.name, userId }
       });
       
       if (!existing) {
         await prisma.category.create({
-          data: { name, userId }
+          data: { name: cat.name, type: cat.type, userId }
         });
       }
+    }
+  },
+
+  /**
+   * Cria uma nova categoria.
+   */
+  async createCategory(userId: string, name: string, type: "INCOME" | "EXPENSE") {
+    try {
+      return await prisma.category.create({
+        data: { name, type, userId }
+      });
+    } catch (error) {
+      console.error("Erro ao criar categoria:", error);
+      throw new Error("Não foi possível criar a categoria.");
     }
   }
 };

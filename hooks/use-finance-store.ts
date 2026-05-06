@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { getTransactions, deleteTransactionAction } from "@/app/actions/transactions";
 import { getCategoriesAction } from "@/app/actions/categories";
 import { getGoalsAction, deleteGoalAction } from "@/app/actions/goals";
+import { getUserProfileAction } from "@/app/actions/user";
 import { SerializedTransaction, SerializedCategory, SerializedGoal } from "@/types/serialized";
 import { toast } from "sonner";
 
@@ -14,11 +15,15 @@ interface FinanceState {
   isLoading: boolean;
   error: string | null;
 
+  user: { name: string; email: string } | null;
+
   // Actions
   setYear: (year: number) => Promise<void>;
   setMonth: (month: number) => void;
+  loadUser: () => Promise<void>;
   loadTransactions: () => Promise<void>;
   loadCategories: () => Promise<void>;
+  addCategory: (category: SerializedCategory) => void;
   loadGoals: () => Promise<void>;
   refreshData: () => Promise<void>;
   
@@ -35,8 +40,20 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
   transactions: [],
   categories: [],
   goals: [],
+  user: null,
   isLoading: false,
   error: null,
+
+  loadUser: async () => {
+    const result = await getUserProfileAction();
+    if (result.success && result.data) {
+      set({ user: { name: result.data.name || "Usuário", email: result.data.email } });
+    }
+  },
+
+  addCategory: (category) => {
+    set((state) => ({ categories: [...state.categories, category] }));
+  },
 
   setYear: async (year: number) => {
     set({ selectedYear: year });
@@ -79,6 +96,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
 
   refreshData: async () => {
     await Promise.all([
+      get().loadUser(),
       get().loadTransactions(), 
       get().loadCategories(),
       get().loadGoals()

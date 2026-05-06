@@ -32,3 +32,17 @@ export async function getCategoriesAction() {
     return { success: false, message: "Falha ao carregar categorias." };
   }
 }
+
+/**
+ * Ação para criar uma nova categoria
+ */
+export async function createCategoryAction(name: string, type: "INCOME" | "EXPENSE") {
+  try {
+    const userId = await getUserId();
+    const newCategory = await CategoryService.createCategory(userId, name, type);
+    return { success: true, data: newCategory };
+  } catch (error: any) {
+    console.error("Erro na Action createCategory:", error);
+    return { success: false, message: error.message || "Falha ao criar categoria." };
+  }
+}

@@ -12,7 +12,9 @@ export type SerializedTransaction = Omit<Transaction, "amount"> & {
 /**
  * Versão serializada da Categoria.
  */
-export type SerializedCategory = Category;
+export type SerializedCategory = Omit<Category, "type"> & {
+  type: "INCOME" | "EXPENSE";
+};
 
 /**
  * Versão serializada da Meta Financeira.

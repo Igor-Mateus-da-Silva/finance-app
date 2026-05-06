@@ -76,7 +76,9 @@ export function MonthSelector() {
         }}
       >
         <SelectTrigger className="w-[140px]">
-          <SelectValue placeholder="Mês" />
+          <SelectValue placeholder="Mês">
+            {MONTHS.find((m) => m.value === selectedMonth.toString())?.label}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           {MONTHS.map((m) => (
